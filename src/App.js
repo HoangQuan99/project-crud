@@ -1,25 +1,289 @@
-import logo from './logo.svg';
-import './App.css';
+import React, {Component} from "react"
+import './App.css'
+import TaskForm from './components/TaskForm'
+import Control from './components/Control'
+import TaskList from './components/TaskList';
+class App extends React.Component {
+    constructor(props){
+        super(props);
+        this.state = {
+            tasks: [], //array
+            isDisplayForm : false,
+            taskEditing : null,
+            filter: {
+                name: '',
+                status: -1
+            },
+            keyWord: '',
+            sortBy: 'name',
+            sortValue: 1
+        };
+    }
+    componentWillMount()
+    {
+        if(localStorage && localStorage.getItem('tasks'))
+        {
+            var tasks = JSON.parse(localStorage.getItem('tasks'));
+            this.setState({
+                tasks: tasks
+            });
+        }
+    }
+    onGenerate = ()=>{
+        var tasks = [
+            {
+                id : this.genarateID(),
+                name: 'Học Reactjs',
+                status: true 
+            },
+            {
+                id : this.genarateID(),
+                name: 'Học Java',
+                status: false 
+            },
+            {
+                id : this.genarateID(),
+                name: 'Học PHP',
+                status: true 
+            },
+            {
+                id : this.genarateID(),
+                name: 'Học HTML/CSS',
+                status: true 
+            },
+            {
+                id : this.genarateID(),
+                name: 'Học Laravel',
+                status: false 
+            },
+            {
+                id : this.genarateID(),
+                name: 'Học Python',
+                status: true 
+            }
+        ];
+        this.setState({
+            tasks : tasks
+        });
+        localStorage.setItem('tasks',JSON.stringify(tasks));
+    }
+    makeRandom()
+    {
+        // return Math.floor((1+Math.random()) * 0x10000);
+        return Math.floor((1+Math.random()) *0x10000).toString(16).substring(1);
+    }
+    genarateID()
+    {
+        return this.makeRandom() + this.makeRandom();
+    }
+    displayForm =() =>
+    {
+        if(this.state.isDisplayForm && this.state.taskEditing !==null)
+        {
+            this.setState({
+                isDisplayForm: true,
+                taskEditing: null
+            });
+        }
+        else 
+        {
+            this.setState({
+                isDisplayForm: !this.state.isDisplayForm,
+                taskEditing: null
+            });
+        }
+        
+    }
+    onSubmit = (data) =>
+    {
+        var {tasks} = this.state; //list cong viec
+        if(data.id =='')
+        {
+            data.id = this.genarateID();
+            tasks.push(data); 
+        }
+        else
+        {
+            var index = this.findIndex(data.id);
+            tasks[index] = data;
+        }
+        this.setState({
+            tasks: tasks,
+            taskEditing : null
+        });
+        localStorage.setItem('tasks',JSON.stringify(tasks));
+    }
+    onShowForm =() =>
+    {
+        this.setState({
+            isDisplayForm: true
+        });
+    }
+    onCloseForm = () =>
+    {
+        this.setState({
+            isDisplayForm: !this.state.isDisplayForm
+        });
+    }
+    onUpdateStatus = (id) =>
+    {
+        var {tasks} = this.state;
+        var index = this.findIndex(id);
+        if(index != -1)
+        tasks[index].status = !tasks[index].status;
+        this.setState({
+            tasks: tasks
+        });
+        localStorage.setItem('tasks',JSON.stringify(tasks));
 
-function App() {
+    }
+    findIndex = (id) =>
+    {
+        var {tasks} = this.state;
+        var result = -1;
+        tasks.forEach((tasks,index) =>{
+            if(tasks.id == id)
+             result = index;
+        });
+        return result;
+    }
+    deleteItem =(id) =>
+    {
+        var {tasks} = this.state;
+        var index = this.findIndex(id);
+        if(index != -1){
+            tasks.splice(index,1);
+            this.setState({
+                tasks: tasks
+            });
+            localStorage.setItem('tasks',JSON.stringify(tasks));
+        }
+        this.onCloseForm();
+    }
+    updateData =(id) =>
+    {
+        var {tasks} = this.state;
+        var index = this.findIndex(id);
+        var taskEditing = tasks[index];
+        this.setState({
+            taskEditing: taskEditing
+        });
+        this.onShowForm();
+    }
+    onFilter =(filterName,filterStatus)=> 
+    {
+        filterStatus = parseInt(filterStatus,10);
+        this.setState({
+            filter: {
+                name:filterName.toLowerCase(),
+                status: filterStatus
+            }
+        });
+
+    }
+    onSearch = (keyWord) => {
+        this.setState({
+            keyWord: keyWord
+        });
+    }
+    onSort = (SortBy,sortValue) => {
+        this.setState ({
+                sortBy: SortBy,
+                sortValue: sortValue
+        });
+        
+    }
+
+  render(){
+      var { tasks, isDisplayForm, taskEditing, filter, keyWord, sortBy, sortValue } = this.state; // var tasks = this.state.tasks
+      if(filter)
+      {
+          if(filter.name)
+          {
+              tasks = tasks.filter((tasks)=>{
+                  return tasks.name.toLowerCase().indexOf(filter.name) !== -1;
+              })
+          }
+          else
+          {
+              tasks = tasks.filter((tasks)=>{
+                if(filter.status === -1)
+                {
+                    return tasks;
+                }
+                else
+                {
+                    return tasks.status === (filter.status === 1 ? true : false);
+                }
+              })
+          }
+      }
+      if(keyWord)
+      {
+        tasks = tasks.filter((tasks)=>{
+            return tasks.name.toLowerCase().indexOf(keyWord) !== -1;
+        })
+      }
+      if(sortBy === 'name')
+      {
+       tasks.sort((a,b)=>{
+        if(a.name >b.name)
+            return sortValue;
+        else if(a.name < b.name)
+            return -sortValue;
+        else
+            return 0;
+       })   
+      }
+      else
+      {
+        tasks.sort((a,b)=>{
+            if(a.status >b.status)
+                return -sortValue;
+            else if(a.status < b.status)
+                return sortValue;
+            else
+                return 0;
+           }) 
+      }
+      var emlForm = isDisplayForm ? <TaskForm onCloseForm={this.onCloseForm} onSubmit ={this.onSubmit} tasks={taskEditing }/> : '';
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="container">
+        <div className="text-center">
+            <h1>Quản Lý Công Việc</h1>
+            <hr/>
+        </div>
+        <div className="row">
+            <div className={isDisplayForm ? 'col-xs-4 col-sm-4 col-md-4 col-lg-4' : ''}>
+                { emlForm }
+            </div>
+            <div className={isDisplayForm ? 'col-xs-8 col-sm-8 col-md-8 col-lg-8' : 'col-xs-12 col-sm-12 col-md-12 col-lg-12'}>
+                <button type="button" className="btn btn-primary" onClick={this.displayForm}>
+                    <span className="fa fa-plus mr-5"></span>Thêm Công Việc
+                </button>
+                {/* <button type="button" className="btn btn-danger ml-5" onClick={this.onGenerate}>
+                    <span className="fa fa-plus mr-5"></span>Generate Data
+                </button> */}
+                    <Control 
+                    onSearch ={this.onSearch}
+                    onSort ={this.onSort}
+                    sortBy = {sortBy}
+                    sortValue={sortValue}
+                     />
+                <div className="row mt-15">
+                    <div className="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+                        <TaskList 
+                        deleteItem = {this.deleteItem}
+                        onUpdateStatus = {this.onUpdateStatus}
+                        updateData = {this.updateData}
+                        tasks = { tasks }
+                        onFilter ={this.onFilter} />
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
   );
+ }
 }
-
 export default App;
